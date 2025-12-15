@@ -140,15 +140,13 @@ export class EventReplay {
     // Calculate delay based on timing
     if (this.replaySession.startTime !== null) {
       if (eventIndex === 0) {
-        // For the first event, use its timestamp as the delay
+        // For the first event, use its timestamp as the delay from replay start
         delay = currentEvent.timestamp;
       } else {
-        // For subsequent events, calculate delay relative to first event
-        const firstEventTime = events[0].timestamp;
+        // For subsequent events, calculate delay relative to the previous event
+        const previousEventTime = events[eventIndex - 1].timestamp;
         const currentEventTime = currentEvent.timestamp;
-        const expectedDelay = currentEventTime - firstEventTime;
-        const elapsedTime = performance.now() - this.replaySession.startTime;
-        delay = Math.max(0, expectedDelay - elapsedTime);
+        delay = currentEventTime - previousEventTime;
       }
     }
 
