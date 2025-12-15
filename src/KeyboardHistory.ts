@@ -4,6 +4,7 @@
 import { KeyEvent, KeyboardHistoryConfig, RecordingSession } from './types';
 import { EventStore } from './EventStore';
 import { EventCapture } from './EventCapture';
+import { EventReplay } from './EventReplay';
 
 /**
  * KeyboardHistory is the main class that provides keyboard event recording functionality.
@@ -12,6 +13,7 @@ import { EventCapture } from './EventCapture';
 export class KeyboardHistory {
   private eventStore: EventStore;
   private eventCapture: EventCapture;
+  private eventReplay: EventReplay;
   private session: RecordingSession;
   private config: KeyboardHistoryConfig;
 
@@ -23,6 +25,7 @@ export class KeyboardHistory {
     this.config = config || {};
     this.eventStore = new EventStore(this.config);
     this.eventCapture = new EventCapture(this.config);
+    this.eventReplay = new EventReplay(this.config);
     
     // Initialize recording session
     this.session = {
@@ -101,5 +104,32 @@ export class KeyboardHistory {
       startTime: this.session.startTime,
       events: [...this.session.events] // Return copy to prevent external modification
     };
+  }
+
+  /**
+   * Replays the recorded keyboard events by dispatching CustomEvents with original timing.
+   * Uses the events stored in the EventStore and delegates to the EventReplay module.
+   * @throws Error if replay is already in progress
+   */
+  replay(): void {
+    const events = this.eventStore.getAllEvents();
+    this.eventReplay.replay(events);
+  }
+
+  /**
+   * Stops the current replay process if one is in progress.
+   * Delegates to the EventReplay module for replay control.
+   */
+  stopReplay(): void {
+    this.eventReplay.stopReplay();
+  }
+
+  /**
+   * Returns whether a replay is currently in progress.
+   * Delegates to the EventReplay module for state checking.
+   * @returns True if replaying, false otherwise
+   */
+  isReplaying(): boolean {
+    return this.eventReplay.isReplaying();
   }
 }

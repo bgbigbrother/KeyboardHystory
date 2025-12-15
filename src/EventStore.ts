@@ -71,11 +71,11 @@ export class EventStore {
       throw new Error('Event code must be a non-empty string');
     }
 
-    if (typeof event.duration !== 'number' || event.duration < 0) {
+    if (typeof event.duration !== 'number' || event.duration < 0 || !isFinite(event.duration)) {
       throw new Error('Event duration must be a non-negative number');
     }
 
-    if (typeof event.timestamp !== 'number' || event.timestamp <= 0) {
+    if (typeof event.timestamp !== 'number' || event.timestamp <= 0 || !isFinite(event.timestamp)) {
       throw new Error('Event timestamp must be a positive number');
     }
   }

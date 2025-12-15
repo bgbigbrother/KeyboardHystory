@@ -14,8 +14,16 @@ export interface RecordingSession {
   events: KeyEvent[];
 }
 
+export interface ReplaySession {
+  isReplaying: boolean;
+  currentIndex: number;
+  startTime: number | null;
+  timeoutIds: ReturnType<typeof setTimeout>[];
+}
+
 export interface KeyboardHistoryConfig {
   maxEvents?: number;           // Maximum events to store (default: 10000)
   captureRepeats?: boolean;     // Capture key repeat events (default: true)
   timestampPrecision?: number;  // Decimal places for timestamps (default: 3)
+  replayEventName?: string;     // Custom event name for replay (default: 'keyboardHistoryReplay')
 }

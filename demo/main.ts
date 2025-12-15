@@ -6,11 +6,15 @@ class KeyboardHistoryDemo {
   private keyboardHistory: KeyboardHistory;
   private sessionStartTime: number | null = null;
   private updateInterval: number | null = null;
+  private replayUpdateInterval: number | null = null;
   private eventUpdateQueue: KeyEvent[] = [];
+  private replayedEvents: any[] = [];
 
   // DOM elements
   private startBtn: HTMLButtonElement;
   private stopBtn: HTMLButtonElement;
+  private replayBtn: HTMLButtonElement;
+  private stopReplayBtn: HTMLButtonElement;
   private exportBtn: HTMLButtonElement;
   private clearBtn: HTMLButtonElement;
   private statusIndicator: HTMLElement;
@@ -18,14 +22,18 @@ class KeyboardHistoryDemo {
   private eventCount: HTMLElement;
   private sessionDuration: HTMLElement;
   private avgDuration: HTMLElement;
+  private replayProgress: HTMLElement;
   private eventsList: HTMLElement;
   private eventsInfo: HTMLElement;
+  private replayEventsList: HTMLElement;
+  private replayInfo: HTMLElement;
 
   constructor() {
     this.keyboardHistory = new KeyboardHistory({
       maxEvents: 1000,
       captureRepeats: true,
-      timestampPrecision: 3
+      timestampPrecision: 3,
+      replayEventName: 'keyboardHistoryReplay' // Default event name (configurable)
     });
 
     this.initializeElements();
@@ -36,6 +44,8 @@ class KeyboardHistoryDemo {
   private initializeElements(): void {
     this.startBtn = document.getElementById('startBtn') as HTMLButtonElement;
     this.stopBtn = document.getElementById('stopBtn') as HTMLButtonElement;
+    this.replayBtn = document.getElementById('replayBtn') as HTMLButtonElement;
+    this.stopReplayBtn = document.getElementById('stopReplayBtn') as HTMLButtonElement;
     this.exportBtn = document.getElementById('exportBtn') as HTMLButtonElement;
     this.clearBtn = document.getElementById('clearBtn') as HTMLButtonElement;
     this.statusIndicator = document.getElementById('statusIndicator') as HTMLElement;
@@ -43,12 +53,16 @@ class KeyboardHistoryDemo {
     this.eventCount = document.getElementById('eventCount') as HTMLElement;
     this.sessionDuration = document.getElementById('sessionDuration') as HTMLElement;
     this.avgDuration = document.getElementById('avgDuration') as HTMLElement;
+    this.replayProgress = document.getElementById('replayProgress') as HTMLElement;
     this.eventsList = document.getElementById('eventsList') as HTMLElement;
     this.eventsInfo = document.getElementById('eventsInfo') as HTMLElement;
+    this.replayEventsList = document.getElementById('replayEventsList') as HTMLElement;
+    this.replayInfo = document.getElementById('replayInfo') as HTMLElement;
 
-    if (!this.startBtn || !this.stopBtn || !this.exportBtn || !this.clearBtn ||
-        !this.statusIndicator || !this.statusText || !this.eventCount ||
-        !this.sessionDuration || !this.avgDuration || !this.eventsList || !this.eventsInfo) {
+    if (!this.startBtn || !this.stopBtn || !this.replayBtn || !this.stopReplayBtn ||
+        !this.exportBtn || !this.clearBtn || !this.statusIndicator || !this.statusText || 
+        !this.eventCount || !this.sessionDuration || !this.avgDuration || !this.replayProgress ||
+        !this.eventsList || !this.eventsInfo || !this.replayEventsList || !this.replayInfo) {
       throw new Error('Required DOM elements not found');
     }
   }
@@ -56,6 +70,8 @@ class KeyboardHistoryDemo {
   private bindEvents(): void {
     this.startBtn.addEventListener('click', () => this.startRecording());
     this.stopBtn.addEventListener('click', () => this.stopRecording());
+    this.replayBtn.addEventListener('click', () => this.startReplay());
+    this.stopReplayBtn.addEventListener('click', () => this.stopReplay());
     this.exportBtn.addEventListener('click', () => this.exportData());
     this.clearBtn.addEventListener('click', () => this.clearEvents());
 
@@ -65,6 +81,11 @@ class KeyboardHistoryDemo {
         // Small delay to allow the KeyboardHistory to process the event first
         setTimeout(() => this.updateEventDisplay(), 10);
       }
+    });
+
+    // Listen for replay events to demonstrate replay functionality
+    document.addEventListener('keyboardHistoryReplay', (event: CustomEvent) => {
+      this.handleReplayEvent(event);
     });
   }
 
@@ -139,11 +160,85 @@ class KeyboardHistoryDemo {
     }
   }
 
+  private startReplay(): void {
+    try {
+      const events = this.keyboardHistory.getRecordedKeys();
+      if (events.length === 0) {
+        this.showNotification('No events to replay. Record some events first.', 'error');
+        return;
+      }
+
+      // Clear previous replay events
+      this.replayedEvents = [];
+      this.updateReplayDisplay();
+
+      // Start replay
+      this.keyboardHistory.replay();
+
+      // Start updating replay progress
+      this.replayUpdateInterval = window.setInterval(() => {
+        this.updateReplayProgress();
+      }, 100);
+
+      this.updateUI();
+      this.showNotification(`Starting replay of ${events.length} events...`, 'success');
+    } catch (error) {
+      this.showNotification('Failed to start replay: ' + (error as Error).message, 'error');
+    }
+  }
+
+  private stopReplay(): void {
+    try {
+      this.keyboardHistory.stopReplay();
+      
+      if (this.replayUpdateInterval) {
+        clearInterval(this.replayUpdateInterval);
+        this.replayUpdateInterval = null;
+      }
+
+      this.updateUI();
+      this.showNotification('Replay stopped.', 'success');
+    } catch (error) {
+      this.showNotification('Failed to stop replay: ' + (error as Error).message, 'error');
+    }
+  }
+
+  private handleReplayEvent(event: CustomEvent): void {
+    // Add the replayed event to our tracking array
+    this.replayedEvents.push({
+      key: event.detail.key,
+      code: event.detail.code,
+      duration: event.detail.duration,
+      originalTimestamp: event.detail.originalTimestamp,
+      replayTimestamp: event.detail.replayTimestamp,
+      timestamp: event.detail.replayTimestamp // Use replay timestamp for display
+    });
+
+    // Update the replay display
+    this.updateReplayDisplay();
+
+    // Check if replay is complete
+    if (!this.keyboardHistory.isReplaying() && this.replayUpdateInterval) {
+      clearInterval(this.replayUpdateInterval);
+      this.replayUpdateInterval = null;
+      this.updateUI();
+      this.showNotification(`Replay completed! ${this.replayedEvents.length} events replayed.`, 'success');
+    }
+  }
+
   private clearEvents(): void {
     // Stop recording if active
     if (this.keyboardHistory.isRecording()) {
       this.stopRecording();
     }
+
+    // Stop replay if active
+    if (this.keyboardHistory.isReplaying()) {
+      this.stopReplay();
+    }
+
+    // Clear replay events
+    this.replayedEvents = [];
 
     // Create new instance to clear all data
     this.keyboardHistory = new KeyboardHistory({
@@ -154,21 +249,34 @@ class KeyboardHistoryDemo {
 
     this.updateUI();
     this.updateEventDisplay();
+    this.updateReplayDisplay();
     this.showNotification('All events cleared.', 'success');
   }
 
   private updateUI(): void {
     const isRecording = this.keyboardHistory.isRecording();
+    const isReplaying = this.keyboardHistory.isReplaying();
     const events = this.keyboardHistory.getRecordedKeys();
 
     // Update button states
-    this.startBtn.disabled = isRecording;
+    this.startBtn.disabled = isRecording || isReplaying;
     this.stopBtn.disabled = !isRecording;
+    this.replayBtn.disabled = events.length === 0 || isRecording || isReplaying;
+    this.stopReplayBtn.disabled = !isReplaying;
     this.exportBtn.disabled = events.length === 0;
+    this.clearBtn.disabled = isRecording || isReplaying;
 
-    // Update status indicator
+    // Update status indicator and text
     this.statusIndicator.classList.toggle('recording', isRecording);
-    this.statusText.textContent = isRecording ? 'Recording...' : 'Not Recording';
+    this.statusIndicator.classList.toggle('replaying', isReplaying);
+    
+    if (isRecording) {
+      this.statusText.textContent = 'Recording...';
+    } else if (isReplaying) {
+      this.statusText.textContent = 'Replaying...';
+    } else {
+      this.statusText.textContent = 'Ready';
+    }
 
     // Update event count
     this.eventCount.textContent = events.length.toString();
@@ -184,6 +292,9 @@ class KeyboardHistoryDemo {
 
     // Update session duration
     this.updateSessionDuration();
+
+    // Update replay progress
+    this.updateReplayProgress();
   }
 
   private updateSessionDuration(): void {
@@ -252,6 +363,55 @@ class KeyboardHistoryDemo {
     };
 
     return keyMap[key] || key;
+  }
+
+  private updateReplayProgress(): void {
+    const events = this.keyboardHistory.getRecordedKeys();
+    const replayedCount = this.replayedEvents.length;
+    
+    if (events.length === 0) {
+      this.replayProgress.textContent = '0%';
+      return;
+    }
+
+    const progress = (replayedCount / events.length) * 100;
+    this.replayProgress.textContent = `${Math.round(progress)}%`;
+  }
+
+  private updateReplayDisplay(): void {
+    if (this.replayedEvents.length === 0) {
+      this.replayEventsList.innerHTML = `
+        <li class="empty-state">
+          <div class="empty-state-icon">🔄</div>
+          <p>No replay events yet</p>
+          <p><small>Start a replay to see events appear here</small></p>
+        </li>
+      `;
+      this.replayInfo.textContent = 'Replayed events will appear here during replay';
+      return;
+    }
+
+    // Show most recent replayed events first
+    const recentEvents = [...this.replayedEvents].reverse().slice(0, 50); // Limit display to last 50 events
+    
+    this.replayEventsList.innerHTML = recentEvents.map(event => {
+      const timestamp = new Date(event.timestamp).toLocaleTimeString();
+      const keyDisplay = this.formatKeyForDisplay(event.key);
+      const timeDiff = event.replayTimestamp - event.originalTimestamp;
+      
+      return `
+        <li class="event-item">
+          <div class="event-key">${keyDisplay}</div>
+          <div class="event-duration">${event.duration.toFixed(1)}ms</div>
+          <div class="event-timestamp">${timestamp}</div>
+          <div class="event-code">${event.code}</div>
+        </li>
+      `;
+    }).join('');
+
+    this.replayInfo.textContent = this.replayedEvents.length > 50 
+      ? `Showing last 50 of ${this.replayedEvents.length} replayed events`
+      : `${this.replayedEvents.length} events replayed`;
   }
 
   private showNotification(message: string, type: 'success' | 'error' = 'success'): void {

@@ -3,4 +3,5 @@
 
 export { KeyboardHistory } from './KeyboardHistory';
 export { EventCapture } from './EventCapture';
-export type { KeyEvent, RecordingSession, KeyboardHistoryConfig } from './types';
+export { EventReplay } from './EventReplay';
+export type { KeyEvent, RecordingSession, ReplaySession, KeyboardHistoryConfig } from './types';

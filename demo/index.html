@@ -132,6 +132,38 @@
             background: #545b62;
         }
 
+        .btn-replay {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-replay:hover {
+            background: #138496;
+        }
+
+        .btn-replay:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-stop-replay {
+            background: #fd7e14;
+            color: white;
+        }
+
+        .btn-stop-replay:hover {
+            background: #e8690b;
+        }
+
+        .btn-stop-replay:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         .status {
             display: flex;
             align-items: center;
@@ -150,6 +182,10 @@
 
         .status-indicator.recording {
             background: #28a745;
+        }
+
+        .status-indicator.replaying {
+            background: #17a2b8;
         }
 
         @keyframes pulse {
@@ -326,6 +362,8 @@
                 <li>Type on your keyboard - all key presses will be recorded</li>
                 <li>Click "Stop Recording" to end the session</li>
                 <li>Use "Export Data" to download the recorded events as JSON</li>
+                <li>Use "Replay Events" to simulate the recorded keyboard interactions</li>
+                <li>Use "Stop Replay" to halt an ongoing replay</li>
                 <li>Use "Clear Events" to reset the display</li>
             </ul>
         </div>
@@ -333,6 +371,8 @@
         <div class="controls">
             <button id="startBtn" class="btn btn-start">Start Recording</button>
             <button id="stopBtn" class="btn btn-stop" disabled>Stop Recording</button>
+            <button id="replayBtn" class="btn btn-replay" disabled>Replay Events</button>
+            <button id="stopReplayBtn" class="btn btn-stop-replay" disabled>Stop Replay</button>
             <button id="exportBtn" class="btn btn-export" disabled>Export Data</button>
             <button id="clearBtn" class="btn btn-clear">Clear Events</button>
             
@@ -355,6 +395,10 @@
                 <div id="avgDuration" class="stat-value">0ms</div>
                 <div class="stat-label">Avg Key Duration</div>
             </div>
+            <div class="stat-item">
+                <div id="replayProgress" class="stat-value">0%</div>
+                <div class="stat-label">Replay Progress</div>
+            </div>
         </div>
 
         <div class="events-section">
@@ -369,6 +413,23 @@
                         <div class="empty-state-icon">⌨️</div>
                         <p>No events recorded yet</p>
                         <p><small>Start recording and type to see events appear here</small></p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="events-section">
+            <div class="events-header">
+                <h2>Replay Events</h2>
+                <small id="replayInfo">Replayed events will appear here during replay</small>
+            </div>
+            
+            <div class="events-container">
+                <ul id="replayEventsList" class="events-list">
+                    <li class="empty-state">
+                        <div class="empty-state-icon">🔄</div>
+                        <p>No replay events yet</p>
+                        <p><small>Start a replay to see events appear here</small></p>
                     </li>
                 </ul>
             </div>
