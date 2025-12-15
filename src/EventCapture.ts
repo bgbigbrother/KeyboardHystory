@@ -2,7 +2,8 @@ import { KeyEvent, KeyboardHistoryConfig } from './types';
 
 /**
  * EventCapture handles DOM keyboard event management for the KeyboardHistory library.
- * Manages event listeners, calculates key press durations, and generates normalized key events.
+ * Manages event listeners, calculates key press durations, and generates normalized key events
+ * with session-relative timestamps (0-based from session start time).
  */
 export class EventCapture {
   private isCapturing: boolean = false;
@@ -10,6 +11,7 @@ export class EventCapture {
   private captureRepeats: boolean;
   private timestampPrecision: number;
   private onEventCallback?: (event: KeyEvent) => void;
+  private sessionStartTime: number = 0;
 
   constructor(config?: KeyboardHistoryConfig) {
     this.captureRepeats = config?.captureRepeats ?? true;
@@ -19,14 +21,16 @@ export class EventCapture {
   /**
    * Starts capturing keyboard events by attaching event listeners to the document.
    * @param onEvent Callback function to handle captured KeyEvent objects
+   * @param sessionStartTime The timestamp when the recording session started (for calculating session-relative timestamps)
    */
-  startCapture(onEvent: (event: KeyEvent) => void): void {
+  startCapture(onEvent: (event: KeyEvent) => void, sessionStartTime: number): void {
     if (this.isCapturing) {
       return; // Already capturing
     }
 
     this.onEventCallback = onEvent;
     this.isCapturing = true;
+    this.sessionStartTime = sessionStartTime;
     this.keyDownTimes.clear();
 
     // Attach event listeners to document for global keyboard capture
@@ -103,13 +107,14 @@ export class EventCapture {
 
     const keyUpTime = performance.now();
     const duration = this.roundToPrecision(keyUpTime - keyDownTime, this.timestampPrecision);
-    const timestamp = this.roundToPrecision(keyDownTime, this.timestampPrecision);
+    // Calculate session-relative timestamp (milliseconds from session start)
+    const sessionRelativeTimestamp = this.roundToPrecision(keyDownTime - this.sessionStartTime, this.timestampPrecision);
 
     // Create the KeyEvent object
     const keyEvent: KeyEvent = {
       key: keyIdentifier,
       duration: duration,
-      timestamp: timestamp,
+      timestamp: sessionRelativeTimestamp,
       code: event.code
     };
 

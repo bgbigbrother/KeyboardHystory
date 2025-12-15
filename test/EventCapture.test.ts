@@ -54,8 +54,9 @@ describe('EventCapture', () => {
             let timeCounter = 1000;
             mockPerformanceNow.mockImplementation(() => timeCounter);
             
-            // Start capturing
-            eventCapture.startCapture(onEventCallback);
+            // Start capturing with session start time
+            const sessionStartTime = 1000;
+            eventCapture.startCapture(onEventCallback, sessionStartTime);
             
             // Get event handlers
             const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
@@ -93,7 +94,7 @@ describe('EventCapture', () => {
             // Requirements validation
             const hasValidKey = typeof event.key === 'string' && event.key.length > 0;
             const hasValidDuration = typeof event.duration === 'number' && event.duration >= 0;
-            const hasValidTimestamp = typeof event.timestamp === 'number' && event.timestamp > 0;
+            const hasValidTimestamp = typeof event.timestamp === 'number' && event.timestamp >= 0;
             const hasValidCode = typeof event.code === 'string' && event.code.length > 0;
             
             return hasValidKey && hasValidDuration && hasValidTimestamp && hasValidCode;
@@ -124,8 +125,9 @@ describe('EventCapture', () => {
             let timeCounter = 1000;
             mockPerformanceNow.mockImplementation(() => timeCounter);
             
-            // Start capturing
-            eventCapture.startCapture(onEventCallback);
+            // Start capturing with session start time
+            const sessionStartTime = 1000;
+            eventCapture.startCapture(onEventCallback, sessionStartTime);
             
             // Get event handlers
             const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
@@ -178,7 +180,7 @@ describe('EventCapture', () => {
               if (typeof capturedEvent.duration !== 'number' || capturedEvent.duration < 0) {
                 return false;
               }
-              if (typeof capturedEvent.timestamp !== 'number' || capturedEvent.timestamp <= 0) {
+              if (typeof capturedEvent.timestamp !== 'number' || capturedEvent.timestamp < 0) {
                 return false;
               }
               if (typeof capturedEvent.code !== 'string' || capturedEvent.code.length === 0) {
@@ -203,7 +205,7 @@ describe('EventCapture', () => {
     test('should start and stop capturing correctly', () => {
       expect(eventCapture.isCurrentlyCapturing()).toBe(false);
       
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       expect(eventCapture.isCurrentlyCapturing()).toBe(true);
       expect(mockAddEventListener).toHaveBeenCalledTimes(2);
       
@@ -213,8 +215,8 @@ describe('EventCapture', () => {
     });
 
     test('should handle multiple start calls gracefully', () => {
-      eventCapture.startCapture(onEventCallback);
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       expect(mockAddEventListener).toHaveBeenCalledTimes(2); // Should only register once
     });
@@ -232,7 +234,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture Enter key with correct identifier', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -252,7 +254,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture Shift key with correct identifier', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -272,7 +274,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture Ctrl key with correct identifier', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -292,7 +294,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture Alt key with correct identifier', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -312,7 +314,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture Space key with correct identifier', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -332,7 +334,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture Escape key with correct identifier', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -352,7 +354,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture Tab key with correct identifier', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -372,7 +374,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture Backspace key with correct identifier', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -392,7 +394,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture Delete key with correct identifier', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -419,7 +421,7 @@ describe('EventCapture', () => {
     });
 
     test('should capture key repeat events when captureRepeats is enabled (default)', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -446,7 +448,7 @@ describe('EventCapture', () => {
 
     test('should not capture key repeat events when captureRepeats is disabled', () => {
       const eventCaptureNoRepeats = new EventCapture({ captureRepeats: false });
-      eventCaptureNoRepeats.startCapture(onEventCallback);
+      eventCaptureNoRepeats.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
@@ -479,7 +481,7 @@ describe('EventCapture', () => {
     });
 
     test('should handle keydown without corresponding keyup gracefully', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keydownHandler = keydownCall![1];
@@ -495,7 +497,7 @@ describe('EventCapture', () => {
     });
 
     test('should handle keyup without corresponding keydown gracefully', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
       const keyupHandler = keyupCall![1];
@@ -510,7 +512,7 @@ describe('EventCapture', () => {
     });
 
     test('should clear pending keydown events when stopping capture', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keydownHandler = keydownCall![1];
@@ -522,7 +524,7 @@ describe('EventCapture', () => {
       eventCapture.stopCapture();
       
       // Start capture again
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');
       const keyupHandler = keyupCall![1];
@@ -537,7 +539,7 @@ describe('EventCapture', () => {
     });
 
     test('should handle multiple keys pressed during focus loss scenario', () => {
-      eventCapture.startCapture(onEventCallback);
+      eventCapture.startCapture(onEventCallback, 1000);
       
       const keydownCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keydown');
       const keyupCall = mockAddEventListener.mock.calls.find(call => call[0] === 'keyup');

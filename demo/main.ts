@@ -325,7 +325,8 @@ class KeyboardHistoryDemo {
     const recentEvents = [...events].reverse().slice(0, 100); // Limit display to last 100 events
     
     this.eventsList.innerHTML = recentEvents.map(event => {
-      const timestamp = new Date(event.timestamp).toLocaleTimeString();
+      // Format session-relative timestamp (milliseconds from session start)
+      const timestamp = `+${event.timestamp.toFixed(1)}ms`;
       const keyDisplay = this.formatKeyForDisplay(event.key);
       
       return `
@@ -395,9 +396,9 @@ class KeyboardHistoryDemo {
     const recentEvents = [...this.replayedEvents].reverse().slice(0, 50); // Limit display to last 50 events
     
     this.replayEventsList.innerHTML = recentEvents.map(event => {
-      const timestamp = new Date(event.timestamp).toLocaleTimeString();
+      // Format session-relative timestamp for replay events
+      const timestamp = `+${event.originalTimestamp.toFixed(1)}ms`;
       const keyDisplay = this.formatKeyForDisplay(event.key);
-      const timeDiff = event.replayTimestamp - event.originalTimestamp;
       
       return `
         <li class="event-item">

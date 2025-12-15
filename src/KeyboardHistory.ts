@@ -53,11 +53,11 @@ export class KeyboardHistory {
     this.session.startTime = performance.now();
     this.session.events = [];
 
-    // Start capturing events with callback to store them
+    // Start capturing events with callback to store them, passing session start time
     this.eventCapture.startCapture((event: KeyEvent) => {
       this.eventStore.addEvent(event);
       this.session.events.push(event);
-    });
+    }, this.session.startTime);
   }
 
   /**

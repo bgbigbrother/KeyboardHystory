@@ -4,7 +4,7 @@
 export interface KeyEvent {
   key: string;           // Key identifier (e.g., 'a', 'Enter', 'Shift')
   duration: number;      // Time held in milliseconds
-  timestamp: number;     // Unix timestamp when key was pressed
+  timestamp: number;     // Time in milliseconds relative to session start (0-based) when key was initially pressed
   code: string;          // Physical key code (e.g., 'KeyA', 'Enter')
 }
 
@@ -24,6 +24,6 @@ export interface ReplaySession {
 export interface KeyboardHistoryConfig {
   maxEvents?: number;           // Maximum events to store (default: 10000)
   captureRepeats?: boolean;     // Capture key repeat events (default: true)
-  timestampPrecision?: number;  // Decimal places for timestamps (default: 3)
+  timestampPrecision?: number;  // Decimal places for session-relative timestamps (default: 3)
   replayEventName?: string;     // Custom event name for replay (default: 'keyboardHistoryReplay')
 }
