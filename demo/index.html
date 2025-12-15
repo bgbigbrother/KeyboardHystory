@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KeyboardHistory Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-start:hover {
+            background: #218838;
+        }
+
+        .btn-start:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-stop:hover {
+            background: #c82333;
+        }
+
+        .btn-stop:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-export {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-export:hover {
+            background: #0056b3;
+        }
+
+        .btn-export:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-clear {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #545b62;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.recording {
+            background: #28a745;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .stats {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .events-section {
+            padding: 30px;
+        }
+
+        .events-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .events-header h2 {
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .events-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        .events-list {
+            list-style: none;
+        }
+
+        .event-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            display: grid;
+            grid-template-columns: 100px 80px 120px 1fr;
+            gap: 15px;
+            align-items: center;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .event-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .event-item:last-child {
+            border-bottom: none;
+        }
+
+        .event-key {
+            font-weight: bold;
+            color: #667eea;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .event-duration {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .event-timestamp {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .event-code {
+            color: #6c757d;
+            font-size: 0.8rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .instructions h3 {
+            color: #0056b3;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .status {
+                margin-left: 0;
+                justify-content: center;
+            }
+
+            .event-item {
+                grid-template-columns: 1fr;
+                gap: 5px;
+                text-align: center;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>KeyboardHistory Demo</h1>
+            <p>Test the keyboard event recording functionality</p>
+        </div>
+
+        <div class="instructions">
+            <h3>How to use:</h3>
+            <ul>
+                <li>Click "Start Recording" to begin capturing keyboard events</li>
+                <li>Type on your keyboard - all key presses will be recorded</li>
+                <li>Click "Stop Recording" to end the session</li>
+                <li>Use "Export Data" to download the recorded events as JSON</li>
+                <li>Use "Clear Events" to reset the display</li>
+            </ul>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn" class="btn btn-start">Start Recording</button>
+            <button id="stopBtn" class="btn btn-stop" disabled>Stop Recording</button>
+            <button id="exportBtn" class="btn btn-export" disabled>Export Data</button>
+            <button id="clearBtn" class="btn btn-clear">Clear Events</button>
+            
+            <div class="status">
+                <div id="statusIndicator" class="status-indicator"></div>
+                <span id="statusText">Not Recording</span>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div id="eventCount" class="stat-value">0</div>
+                <div class="stat-label">Events Recorded</div>
+            </div>
+            <div class="stat-item">
+                <div id="sessionDuration" class="stat-value">0s</div>
+                <div class="stat-label">Session Duration</div>
+            </div>
+            <div class="stat-item">
+                <div id="avgDuration" class="stat-value">0ms</div>
+                <div class="stat-label">Avg Key Duration</div>
+            </div>
+        </div>
+
+        <div class="events-section">
+            <div class="events-header">
+                <h2>Recorded Events</h2>
+                <small id="eventsInfo">Events will appear here in real-time</small>
+            </div>
+            
+            <div class="events-container">
+                <ul id="eventsList" class="events-list">
+                    <li class="empty-state">
+                        <div class="empty-state-icon">⌨️</div>
+                        <p>No events recorded yet</p>
+                        <p><small>Start recording and type to see events appear here</small></p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/main.ts"></script>
+</body>
+</html>
