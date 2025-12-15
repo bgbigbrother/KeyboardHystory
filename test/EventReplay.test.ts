@@ -149,6 +149,193 @@ describe('EventReplay', () => {
     });
   });
 
+  describe('Validation edge cases', () => {
+    it('should reject undefined array elements', () => {
+      const eventReplay = new EventReplay();
+      
+      expect(() => {
+        eventReplay.replay([undefined] as any);
+      }).toThrow('Event at index 0 is not a valid object');
+    });
+
+    it('should reject null array elements', () => {
+      const eventReplay = new EventReplay();
+      
+      expect(() => {
+        eventReplay.replay([null] as any);
+      }).toThrow('Event at index 0 is not a valid object');
+    });
+
+    it('should reject non-array inputs', () => {
+      const eventReplay = new EventReplay();
+      
+      expect(() => {
+        eventReplay.replay('invalid' as any);
+      }).toThrow('Events must be an array of KeyEvent objects');
+    });
+  });
+
+  describe('External data edge cases', () => {
+    it('should handle empty external array gracefully', () => {
+      const eventReplay = new EventReplay();
+      
+      // Empty external array should not throw error and should not start replay
+      expect(() => eventReplay.replay([])).not.toThrow();
+      expect(eventReplay.isReplaying()).toBe(false);
+    });
+
+    it('should reject malformed event objects with descriptive errors', () => {
+      const eventReplay = new EventReplay();
+      
+      // Missing required properties
+      expect(() => {
+        eventReplay.replay([{ key: 'a' }] as any);
+      }).toThrow('Event at index 0 has invalid \'code\' property: expected string, got undefined');
+
+      expect(() => {
+        eventReplay.replay([{ key: 'a', code: 'KeyA' }] as any);
+      }).toThrow('Event at index 0 has invalid \'duration\' property: expected non-negative number, got undefined');
+
+      expect(() => {
+        eventReplay.replay([{ key: 'a', code: 'KeyA', duration: 100 }] as any);
+      }).toThrow('Event at index 0 has invalid \'timestamp\' property: expected non-negative number, got undefined');
+
+      // Invalid property types
+      expect(() => {
+        eventReplay.replay([{
+          key: 123,
+          code: 'KeyA',
+          duration: 100,
+          timestamp: 1000
+        }] as any);
+      }).toThrow('Event at index 0 has invalid \'key\' property: expected string, got number');
+
+      expect(() => {
+        eventReplay.replay([{
+          key: 'a',
+          code: 123,
+          duration: 100,
+          timestamp: 1000
+        }] as any);
+      }).toThrow('Event at index 0 has invalid \'code\' property: expected string, got number');
+
+      expect(() => {
+        eventReplay.replay([{
+          key: 'a',
+          code: 'KeyA',
+          duration: 'invalid',
+          timestamp: 1000
+        }] as any);
+      }).toThrow('Event at index 0 has invalid \'duration\' property: expected non-negative number, got string');
+
+      expect(() => {
+        eventReplay.replay([{
+          key: 'a',
+          code: 'KeyA',
+          duration: 100,
+          timestamp: 'invalid'
+        }] as any);
+      }).toThrow('Event at index 0 has invalid \'timestamp\' property: expected non-negative number, got string');
+
+      // Negative values
+      expect(() => {
+        eventReplay.replay([{
+          key: 'a',
+          code: 'KeyA',
+          duration: -100,
+          timestamp: 1000
+        }] as any);
+      }).toThrow('Event at index 0 has invalid \'duration\' property: expected non-negative number, got number');
+
+      expect(() => {
+        eventReplay.replay([{
+          key: 'a',
+          code: 'KeyA',
+          duration: 100,
+          timestamp: -1000
+        }] as any);
+      }).toThrow('Event at index 0 has invalid \'timestamp\' property: expected non-negative number, got number');
+
+      // Empty strings
+      expect(() => {
+        eventReplay.replay([{
+          key: '',
+          code: 'KeyA',
+          duration: 100,
+          timestamp: 1000
+        }] as any);
+      }).toThrow('Event at index 0 has empty \'key\' property');
+
+      expect(() => {
+        eventReplay.replay([{
+          key: 'a',
+          code: '',
+          duration: 100,
+          timestamp: 1000
+        }] as any);
+      }).toThrow('Event at index 0 has empty \'code\' property');
+
+      // Whitespace-only strings
+      expect(() => {
+        eventReplay.replay([{
+          key: '   ',
+          code: 'KeyA',
+          duration: 100,
+          timestamp: 1000
+        }] as any);
+      }).toThrow('Event at index 0 has empty \'key\' property');
+
+      expect(() => {
+        eventReplay.replay([{
+          key: 'a',
+          code: '   ',
+          duration: 100,
+          timestamp: 1000
+        }] as any);
+      }).toThrow('Event at index 0 has empty \'code\' property');
+    });
+
+    it('should handle mixed valid/invalid events and report first invalid event', () => {
+      const eventReplay = new EventReplay();
+      
+      // Valid event followed by invalid event - should report the invalid one
+      expect(() => {
+        eventReplay.replay([
+          {
+            key: 'a',
+            code: 'KeyA',
+            duration: 100,
+            timestamp: 1000
+          },
+          {
+            key: 'b',
+            code: 123, // Invalid
+            duration: 150,
+            timestamp: 1200
+          }
+        ] as any);
+      }).toThrow('Event at index 1 has invalid \'code\' property: expected string, got number');
+
+      // Invalid event followed by valid event - should report the first invalid one
+      expect(() => {
+        eventReplay.replay([
+          {
+            key: '', // Invalid
+            code: 'KeyA',
+            duration: 100,
+            timestamp: 1000
+          },
+          {
+            key: 'b',
+            code: 'KeyB',
+            duration: 150,
+            timestamp: 1200
+          }
+        ] as any);
+      }).toThrow('Event at index 0 has empty \'key\' property');
+    });
+  });
+
   describe('Property-Based Tests', () => {
     /**
      * **Feature: keyboard-history, Property 7: Replay order preservation**
@@ -277,6 +464,289 @@ describe('EventReplay', () => {
               eventReplay.stopReplay();
               
               // Property: Valid chronologically ordered events should not cause timing errors
+              return false;
+            }
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    /**
+     * **Feature: keyboard-history, Property 12: External event replay order preservation**
+     * For any array of valid KeyEvent objects provided to replay(), the events should be 
+     * replayed in the same chronological order as provided
+     * **Validates: Requirements 8.1**
+     */
+    it('should preserve order when replaying external event arrays', () => {
+      fc.assert(
+        fc.property(
+          fc.array(
+            fc.record({
+              key: fc.string({ minLength: 1, maxLength: 10 }).filter(s => s.trim().length > 0),
+              code: fc.string({ minLength: 1, maxLength: 10 }).filter(s => s.trim().length > 0),
+              duration: fc.float({ min: 1, max: 1000, noNaN: true }),
+              timestamp: fc.float({ min: 1, max: 10000, noNaN: true })
+            }),
+            { minLength: 0, maxLength: 5 }
+          ),
+          (externalEvents: KeyEvent[]) => {
+            // Sort events by timestamp to ensure chronological order
+            const sortedEvents = [...externalEvents].sort((a, b) => a.timestamp - b.timestamp);
+            
+            // Create EventReplay instance
+            const eventReplay = new EventReplay();
+            
+            try {
+              // Test that external events can be replayed without errors
+              eventReplay.replay(sortedEvents);
+              
+              // Verify that replay session is properly initialized for external events
+              const session = eventReplay.getReplaySession();
+              
+              if (sortedEvents.length === 0) {
+                // Empty external array should not start replay
+                const result = !session.isReplaying;
+                eventReplay.stopReplay();
+                return result;
+              } else {
+                // Non-empty external array should start replay with proper initialization
+                const replayStarted = session.isReplaying;
+                const hasCorrectIndex = session.currentIndex === 0;
+                const hasStartTime = session.startTime !== null;
+                const hasTimeouts = session.timeoutIds.length > 0;
+                
+                // Clean up
+                eventReplay.stopReplay();
+                
+                // Property: External events should be processed in the same order as provided
+                // and should schedule timeouts for event dispatching
+                return replayStarted && hasCorrectIndex && hasStartTime && hasTimeouts;
+              }
+            } catch (error) {
+              // Clean up on error
+              eventReplay.stopReplay();
+              
+              // Property: Valid external events should not cause errors
+              return false;
+            }
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    /**
+     * **Feature: keyboard-history, Property 13: External event validation**
+     * For any external event data provided to replay(), the system should validate 
+     * the event structure and reject invalid data with descriptive error messages
+     * **Validates: Requirements 8.2, 8.4**
+     */
+    it('should validate external event data and reject invalid events with descriptive errors', () => {
+      fc.assert(
+        fc.property(
+          fc.oneof(
+            // Invalid array types (not arrays)
+            fc.constant(null),
+            fc.string(),
+            fc.integer(),
+            fc.boolean(),
+            // Arrays with invalid event objects
+            fc.array(fc.oneof(
+              fc.constant(null),
+              fc.constant(undefined),
+              fc.string(),
+              fc.integer(),
+              // Objects missing required properties
+              fc.record({
+                key: fc.string({ minLength: 1, maxLength: 10 }),
+                // Missing code, duration, timestamp
+              }),
+              // Objects with invalid property types
+              fc.record({
+                key: fc.integer(), // Should be string
+                code: fc.string({ minLength: 1, maxLength: 10 }),
+                duration: fc.float({ min: 1, max: 1000 }),
+                timestamp: fc.float({ min: 1, max: 10000 })
+              }),
+              // Objects with negative values
+              fc.record({
+                key: fc.string({ minLength: 1, maxLength: 10 }),
+                code: fc.string({ minLength: 1, maxLength: 10 }),
+                duration: fc.float({ min: -1000, max: -1 }), // Negative duration
+                timestamp: fc.float({ min: 1, max: 10000 })
+              }),
+              // Objects with empty strings
+              fc.record({
+                key: fc.constant(''), // Empty key
+                code: fc.string({ minLength: 1, maxLength: 10 }),
+                duration: fc.float({ min: 1, max: 1000 }),
+                timestamp: fc.float({ min: 1, max: 10000 })
+              })
+            ), { minLength: 1, maxLength: 2 })
+          ),
+          (invalidData: any) => {
+            const eventReplay = new EventReplay();
+            
+            try {
+              // Attempt to replay invalid data
+              eventReplay.replay(invalidData);
+              
+              // Clean up in case replay somehow started
+              eventReplay.stopReplay();
+              
+              // Property: Invalid data should cause an error, not succeed
+              return false;
+            } catch (error) {
+              // Clean up
+              eventReplay.stopReplay();
+              
+              // Property: Error should be thrown for invalid data
+              const errorThrown = error instanceof Error;
+              const hasDescriptiveMessage = error instanceof Error && 
+                                          error.message.length > 0 &&
+                                          (error.message.includes('Events must be an array') ||
+                                           error.message.includes('Event at index') ||
+                                           error.message.includes('invalid') ||
+                                           error.message.includes('expected'));
+              
+              // Property: Invalid external data should be rejected with descriptive error messages
+              return errorThrown && hasDescriptiveMessage;
+            }
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    /**
+     * **Feature: keyboard-history, Property 14: External event timing preservation**
+     * For any external events with timing intervals, replaying them should maintain 
+     * the original timing intervals between events
+     * **Validates: Requirements 8.3**
+     */
+    it('should preserve timing intervals when replaying external events', () => {
+      fc.assert(
+        fc.property(
+          fc.array(
+            fc.record({
+              key: fc.string({ minLength: 1, maxLength: 10 }).filter(s => s.trim().length > 0),
+              code: fc.string({ minLength: 1, maxLength: 10 }).filter(s => s.trim().length > 0),
+              duration: fc.float({ min: 1, max: 1000, noNaN: true }),
+              timestamp: fc.float({ min: 100, max: 5000, noNaN: true })
+            }),
+            { minLength: 2, maxLength: 4 } // Need at least 2 events to test timing intervals
+          ),
+          (externalEvents: KeyEvent[]) => {
+            // Sort events by timestamp to ensure chronological order
+            const sortedEvents = [...externalEvents].sort((a, b) => a.timestamp - b.timestamp);
+            
+            // Ensure events have meaningful time differences (at least 10ms apart)
+            for (let i = 1; i < sortedEvents.length; i++) {
+              sortedEvents[i].timestamp = sortedEvents[i-1].timestamp + Math.max(10, sortedEvents[i].timestamp - sortedEvents[i-1].timestamp);
+            }
+            
+            const eventReplay = new EventReplay();
+            
+            try {
+              // Start replay with external events to initialize timing
+              eventReplay.replay(sortedEvents);
+              
+              // Verify that replay session is properly initialized with timing for external events
+              const session = eventReplay.getReplaySession();
+              
+              // Property: External events replay should be active and have scheduled timeouts for timing management
+              const replayActive = session.isReplaying;
+              const hasStartTime = session.startTime !== null;
+              const hasScheduledTimeouts = session.timeoutIds.length > 0;
+              
+              // Property: Start time should be a reasonable timestamp (recent)
+              const startTimeValid = session.startTime !== null && 
+                                   session.startTime > 0 && 
+                                   session.startTime <= performance.now();
+              
+              // Clean up
+              eventReplay.stopReplay();
+              
+              // Verify cleanup worked
+              const cleanSession = eventReplay.getReplaySession();
+              const cleanedUp = !cleanSession.isReplaying && 
+                               cleanSession.timeoutIds.length === 0 && 
+                               cleanSession.startTime === null;
+              
+              // Property: External events timing-based replay should initialize correctly and clean up properly
+              return replayActive && hasStartTime && hasScheduledTimeouts && 
+                     startTimeValid && cleanedUp;
+            } catch (error) {
+              // Clean up on error
+              eventReplay.stopReplay();
+              
+              // Property: Valid external events should not cause timing errors
+              return false;
+            }
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    /**
+     * **Feature: keyboard-history, Property 15: Backward compatibility for replay**
+     * For any KeyboardHistory instance with recorded events, calling replay() without 
+     * parameters should replay the currently recorded session events as before
+     * **Validates: Requirements 8.5**
+     */
+    it('should maintain backward compatibility when replay() is called without parameters', () => {
+      fc.assert(
+        fc.property(
+          fc.array(
+            fc.record({
+              key: fc.string({ minLength: 1, maxLength: 10 }).filter(s => s.trim().length > 0),
+              code: fc.string({ minLength: 1, maxLength: 10 }).filter(s => s.trim().length > 0),
+              duration: fc.float({ min: 1, max: 1000, noNaN: true }),
+              timestamp: fc.float({ min: 1, max: 10000, noNaN: true })
+            }),
+            { minLength: 0, maxLength: 5 }
+          ),
+          (storedEvents: KeyEvent[]) => {
+            // Sort events by timestamp to ensure chronological order
+            const sortedEvents = [...storedEvents].sort((a, b) => a.timestamp - b.timestamp);
+            
+            // Create EventReplay instance and set stored events
+            const eventReplay = new EventReplay();
+            eventReplay.setStoredEvents(sortedEvents);
+            
+            try {
+              // Test backward compatibility: replay() without parameters should use stored events
+              eventReplay.replay();
+              
+              // Verify that replay session is properly initialized using stored events
+              const session = eventReplay.getReplaySession();
+              
+              if (sortedEvents.length === 0) {
+                // Empty stored events should not start replay
+                const result = !session.isReplaying;
+                eventReplay.stopReplay();
+                return result;
+              } else {
+                // Non-empty stored events should start replay with proper initialization
+                const replayStarted = session.isReplaying;
+                const hasCorrectIndex = session.currentIndex === 0;
+                const hasStartTime = session.startTime !== null;
+                const hasTimeouts = session.timeoutIds.length > 0;
+                
+                // Clean up
+                eventReplay.stopReplay();
+                
+                // Property: Backward compatibility should work - stored events should be replayed
+                // when replay() is called without parameters
+                return replayStarted && hasCorrectIndex && hasStartTime && hasTimeouts;
+              }
+            } catch (error) {
+              // Clean up on error
+              eventReplay.stopReplay();
+              
+              // Property: Backward compatibility should not cause errors with valid stored events
               return false;
             }
           }

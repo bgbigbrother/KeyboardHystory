@@ -107,13 +107,42 @@ export class KeyboardHistory {
   }
 
   /**
-   * Replays the recorded keyboard events by dispatching CustomEvents with original timing.
-   * Uses the events stored in the EventStore and delegates to the EventReplay module.
-   * @throws Error if replay is already in progress
+   * Replays keyboard events by dispatching CustomEvents with original timing.
+   * Supports both replaying the current session's recorded events and external event data
+   * from persistent storage sources like localStorage, databases, or other data sources.
+   * 
+   * @param events Optional array of KeyEvent objects to replay. If provided, replays these
+   *               external events instead of the current session's recorded events.
+   *               If not provided, uses the current session's recorded events (backward compatibility).
+   * @throws Error if replay is already in progress or if external events have invalid structure
+   * 
+   * @example
+   * // Replay current session's recorded events (backward compatibility)
+   * keyboardHistory.replay();
+   * 
+   * @example
+   * // Replay external events from localStorage
+   * const savedEvents = JSON.parse(localStorage.getItem('keyboardEvents') || '[]');
+   * keyboardHistory.replay(savedEvents);
+   * 
+   * @example
+   * // Replay events from an external data source
+   * const externalEvents: KeyEvent[] = [
+   *   { key: 'a', code: 'KeyA', duration: 100, timestamp: 1000 },
+   *   { key: 'b', code: 'KeyB', duration: 150, timestamp: 1200 }
+   * ];
+   * keyboardHistory.replay(externalEvents);
    */
-  replay(): void {
-    const events = this.eventStore.getAllEvents();
-    this.eventReplay.replay(events);
+  replay(events?: KeyEvent[]): void {
+    if (events !== undefined) {
+      // Replay external events
+      this.eventReplay.replay(events);
+    } else {
+      // Replay stored events (backward compatibility)
+      const storedEvents = this.eventStore.getAllEvents();
+      this.eventReplay.setStoredEvents(storedEvents);
+      this.eventReplay.replay();
+    }
   }
 
   /**

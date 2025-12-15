@@ -7,6 +7,7 @@ import { KeyEvent, KeyboardHistoryConfig, ReplaySession } from './types';
 export class EventReplay {
   private replaySession: ReplaySession;
   private config: KeyboardHistoryConfig;
+  private storedEvents: KeyEvent[];
 
   constructor(config?: KeyboardHistoryConfig) {
     this.config = config || {};
@@ -16,25 +17,46 @@ export class EventReplay {
       startTime: null,
       timeoutIds: []
     };
+    this.storedEvents = [];
   }
 
   /**
-   * Replays a sequence of recorded keyboard events by dispatching CustomEvents
+   * Sets the stored events that will be used for replay when no external events are provided.
+   * @param events Array of KeyEvent objects to store for replay
+   */
+  setStoredEvents(events: KeyEvent[]): void {
+    this.storedEvents = events || [];
+  }
+
+  /**
+   * Replays a sequence of keyboard events by dispatching CustomEvents
    * with the original timing intervals between events.
-   * @param events Array of KeyEvent objects to replay
+   * @param events Optional array of KeyEvent objects to replay. If not provided, uses stored events.
    * @throws Error if replay is already in progress or events array is invalid
    */
-  replay(events: KeyEvent[]): void {
+  replay(events?: KeyEvent[]): void {
     if (this.replaySession.isReplaying) {
       throw new Error('Replay is already in progress. Call stopReplay() first.');
     }
 
-    if (!Array.isArray(events)) {
-      throw new Error('Events must be an array');
+    let eventsToReplay: KeyEvent[];
+    
+    if (events !== undefined) {
+      // External events provided - validate them
+      if (!Array.isArray(events)) {
+        throw new Error('Events must be an array of KeyEvent objects');
+      }
+      eventsToReplay = events;
+    } else {
+      // No external events - use stored events
+      eventsToReplay = this.storedEvents;
     }
 
+    // Validate each event in the array
+    this.validateEvents(eventsToReplay);
+
     // Handle empty events array gracefully
-    if (events.length === 0) {
+    if (eventsToReplay.length === 0) {
       return;
     }
 
@@ -47,7 +69,7 @@ export class EventReplay {
     };
 
     // Start replaying events
-    this.scheduleNextEvent(events, 0);
+    this.scheduleNextEvent(eventsToReplay, 0);
   }
 
   /**
@@ -141,6 +163,46 @@ export class EventReplay {
 
     // Track the timeout ID for cleanup
     this.replaySession.timeoutIds.push(timeoutId);
+  }
+
+  /**
+   * Validates an array of KeyEvent objects to ensure they have the required structure.
+   * @param events Array of events to validate
+   * @throws Error if any event is invalid with descriptive error message
+   */
+  private validateEvents(events: KeyEvent[]): void {
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i];
+      
+      if (!event || typeof event !== 'object') {
+        throw new Error(`Event at index ${i} is not a valid object`);
+      }
+
+      if (typeof event.key !== 'string') {
+        throw new Error(`Event at index ${i} has invalid 'key' property: expected string, got ${typeof event.key}`);
+      }
+
+      if (typeof event.code !== 'string') {
+        throw new Error(`Event at index ${i} has invalid 'code' property: expected string, got ${typeof event.code}`);
+      }
+
+      if (typeof event.duration !== 'number' || event.duration < 0) {
+        throw new Error(`Event at index ${i} has invalid 'duration' property: expected non-negative number, got ${typeof event.duration}`);
+      }
+
+      if (typeof event.timestamp !== 'number' || event.timestamp < 0) {
+        throw new Error(`Event at index ${i} has invalid 'timestamp' property: expected non-negative number, got ${typeof event.timestamp}`);
+      }
+
+      // Additional validation for empty strings
+      if (event.key.trim() === '') {
+        throw new Error(`Event at index ${i} has empty 'key' property`);
+      }
+
+      if (event.code.trim() === '') {
+        throw new Error(`Event at index ${i} has empty 'code' property`);
+      }
+    }
   }
 
   /**

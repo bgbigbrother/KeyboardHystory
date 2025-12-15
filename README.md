@@ -128,18 +128,23 @@ console.log('Start time:', session.startTime);
 console.log('Events count:', session.events.length);
 ```
 
-#### `replay(): void`
+#### `replay(events?: KeyEvent[]): void`
 
-Replays all recorded keyboard events in chronological order with original timing intervals. Events are dispatched as CustomEvents using `document.dispatchEvent()`.
+Replays keyboard events in chronological order with original timing intervals. Events are dispatched as CustomEvents using `document.dispatchEvent()`.
+
+**Parameters:**
+- `events` (optional): Array of KeyEvent objects to replay. If not provided, replays the currently recorded session events.
 
 ```typescript
-// Record some events first
+// Replay recorded events from current session
 keyboardHistory.start();
 // ... user types ...
 keyboardHistory.stop();
-
-// Replay the recorded events
 keyboardHistory.replay();
+
+// Replay external events from localStorage or other sources
+const savedEvents = JSON.parse(localStorage.getItem('keyboardEvents') || '[]');
+keyboardHistory.replay(savedEvents);
 ```
 
 #### `stopReplay(): void`
@@ -376,7 +381,176 @@ document.addEventListener('myCustomKeyboardReplay', (event) => {
 recorder.replay();
 ```
 
-### Automated Testing with Replay
+### External Data Replay
+
+KeyboardHistory supports replaying keyboard events from external data sources like localStorage, databases, or API responses. This is perfect for recreating user sessions, automated testing, or cross-session analysis.
+
+#### Saving and Loading from localStorage
+
+```typescript
+import { KeyboardHistory } from 'keyboard-history';
+
+const recorder = new KeyboardHistory();
+
+// Record a session
+recorder.start();
+// ... user types ...
+recorder.stop();
+
+// Save events to localStorage
+const events = recorder.getRecordedKeys();
+localStorage.setItem('keyboardSession', JSON.stringify(events));
+
+// Later, load and replay the saved events
+const savedEvents = JSON.parse(localStorage.getItem('keyboardSession') || '[]');
+const replayRecorder = new KeyboardHistory();
+
+// Replay the external events
+replayRecorder.replay(savedEvents);
+```
+
+#### Cross-Session Analysis
+
+```typescript
+import { KeyboardHistory } from 'keyboard-history';
+
+const recorder = new KeyboardHistory();
+
+// Function to save session with metadata
+function saveSession(sessionName: string) {
+  const events = recorder.getRecordedKeys();
+  const sessionData = {
+    name: sessionName,
+    timestamp: Date.now(),
+    events: events,
+    metadata: {
+      totalEvents: events.length,
+      duration: events.length > 0 ? events[events.length - 1].timestamp - events[0].timestamp : 0
+    }
+  };
+  
+  localStorage.setItem(`session_${sessionName}`, JSON.stringify(sessionData));
+}
+
+// Function to load and replay any saved session
+function replaySession(sessionName: string) {
+  const sessionData = JSON.parse(localStorage.getItem(`session_${sessionName}`) || 'null');
+  
+  if (sessionData) {
+    console.log(`Replaying session: ${sessionData.name}`);
+    console.log(`Original session had ${sessionData.metadata.totalEvents} events`);
+    
+    const replayRecorder = new KeyboardHistory();
+    replayRecorder.replay(sessionData.events);
+  }
+}
+
+// Usage
+recorder.start();
+// ... user types ...
+recorder.stop();
+saveSession('user_onboarding');
+
+// Later, replay the onboarding session
+replaySession('user_onboarding');
+```
+
+#### Database Integration Example
+
+```typescript
+import { KeyboardHistory } from 'keyboard-history';
+
+class KeyboardSessionManager {
+  private recorder: KeyboardHistory;
+  
+  constructor() {
+    this.recorder = new KeyboardHistory();
+  }
+  
+  // Save session to database (pseudo-code)
+  async saveSessionToDatabase(userId: string, sessionName: string) {
+    const events = this.recorder.getRecordedKeys();
+    
+    const sessionData = {
+      userId,
+      sessionName,
+      events,
+      createdAt: new Date().toISOString(),
+      eventCount: events.length
+    };
+    
+    // Save to your database
+    await fetch('/api/keyboard-sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessionData)
+    });
+  }
+  
+  // Load and replay session from database
+  async replaySessionFromDatabase(sessionId: string) {
+    const response = await fetch(`/api/keyboard-sessions/${sessionId}`);
+    const sessionData = await response.json();
+    
+    console.log(`Replaying session: ${sessionData.sessionName}`);
+    this.recorder.replay(sessionData.events);
+  }
+}
+
+// Usage
+const sessionManager = new KeyboardSessionManager();
+
+// Record and save
+sessionManager.recorder.start();
+// ... user interaction ...
+sessionManager.recorder.stop();
+await sessionManager.saveSessionToDatabase('user123', 'feature_test');
+
+// Later, replay from database
+await sessionManager.replaySessionFromDatabase('session_456');
+```
+
+#### Event Validation and Error Handling
+
+```typescript
+import { KeyboardHistory } from 'keyboard-history';
+
+function validateAndReplayEvents(events: any[]) {
+  const recorder = new KeyboardHistory();
+  
+  try {
+    // Validate event structure before replay
+    const validEvents = events.filter(event => {
+      return event && 
+             typeof event.key === 'string' &&
+             typeof event.duration === 'number' &&
+             typeof event.timestamp === 'number' &&
+             typeof event.code === 'string';
+    });
+    
+    if (validEvents.length === 0) {
+      console.warn('No valid events found to replay');
+      return;
+    }
+    
+    if (validEvents.length !== events.length) {
+      console.warn(`Filtered out ${events.length - validEvents.length} invalid events`);
+    }
+    
+    console.log(`Replaying ${validEvents.length} valid events`);
+    recorder.replay(validEvents);
+    
+  } catch (error) {
+    console.error('Error during replay:', error);
+  }
+}
+
+// Usage with potentially malformed data
+const externalData = JSON.parse(localStorage.getItem('untrustedEvents') || '[]');
+validateAndReplayEvents(externalData);
+```
+
+#### Automated Testing with External Data
 
 ```typescript
 import { KeyboardHistory } from 'keyboard-history';
@@ -395,24 +569,86 @@ localStorage.setItem('testKeyboardEvents', JSON.stringify(testEvents));
 // Later, in automated tests, replay the interaction
 const savedEvents = JSON.parse(localStorage.getItem('testKeyboardEvents') || '[]');
 
-// Create new recorder instance and load events
+// Create new recorder instance for testing
 const testRecorder = new KeyboardHistory();
-// Note: You would need to manually set the events for this use case
-// This is a conceptual example of how replay could be used for testing
 
 // Set up test assertions
 let replayedEventCount = 0;
-document.addEventListener('keyboardhistory:replay', () => {
+document.addEventListener('keyboardHistoryReplay', (event) => {
   replayedEventCount++;
+  const customEvent = event as CustomEvent;
+  console.log('Test replay event:', customEvent.detail);
 });
 
-// Replay and verify
-testRecorder.replay();
+// Replay the saved events directly
+testRecorder.replay(savedEvents);
 
 setTimeout(() => {
   console.log(`Replayed ${replayedEventCount} events for testing`);
 }, 2000);
 ```
+
+#### Merging Multiple Sessions
+
+```typescript
+import { KeyboardHistory } from 'keyboard-history';
+
+function mergeSessions(sessionNames: string[]): KeyEvent[] {
+  const allEvents: KeyEvent[] = [];
+  
+  sessionNames.forEach(sessionName => {
+    const sessionData = localStorage.getItem(`session_${sessionName}`);
+    if (sessionData) {
+      const session = JSON.parse(sessionData);
+      allEvents.push(...session.events);
+    }
+  });
+  
+  // Sort by timestamp to maintain chronological order
+  return allEvents.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+// Merge and replay multiple sessions
+const mergedEvents = mergeSessions(['session1', 'session2', 'session3']);
+const recorder = new KeyboardHistory();
+
+console.log(`Replaying ${mergedEvents.length} events from merged sessions`);
+recorder.replay(mergedEvents);
+```
+
+## External Data Replay Use Cases
+
+The enhanced `replay()` method with external data support enables powerful scenarios for keyboard event analysis and automation:
+
+### 🔄 **Session Persistence**
+- Save keyboard sessions to localStorage, databases, or files
+- Resume analysis across browser sessions or page reloads
+- Build libraries of common interaction patterns
+
+### 🧪 **Automated Testing**
+- Record real user interactions once, replay them in tests
+- Create regression test suites based on actual user behavior
+- Validate UI responses to specific keyboard input patterns
+
+### 📊 **Cross-Session Analysis**
+- Compare typing patterns across different time periods
+- Analyze user behavior changes over multiple sessions
+- Aggregate data from multiple users for statistical analysis
+
+### 🎯 **User Experience Research**
+- Replay user sessions to understand interaction patterns
+- Identify common keystroke sequences and timing patterns
+- Study typing behavior under different conditions
+
+### 🔧 **Debugging and Development**
+- Reproduce specific user-reported issues by replaying their exact keystrokes
+- Test keyboard event handling with known problematic sequences
+- Validate timing-sensitive keyboard interactions
+
+### 📈 **Performance Analysis**
+- Measure and compare keyboard event processing performance
+- Test system behavior under high-frequency keystroke scenarios
+- Validate event handling consistency across different data sets
 
 ## Demo Page
 
@@ -464,10 +700,21 @@ The demo page provides:
    - Use "Stop Replay" to halt replay at any time
    - Listen for custom events or observe visual feedback during replay
 
-3. **Analyzing Data**:
+3. **External Data Scenarios**:
+   - Export recorded data as JSON and save it to localStorage
+   - Import previously saved sessions from localStorage for replay
+   - Test the external data replay functionality by:
+     - Recording a session and exporting the data
+     - Clearing the current session
+     - Importing the saved data and replaying it
+   - Experiment with merging multiple saved sessions
+   - Validate external data handling with malformed or incomplete event objects
+
+4. **Analyzing Data**:
    - View real-time statistics including event count and average duration
    - Export recorded data as JSON for further analysis
    - Clear the session to start fresh
+   - Compare statistics between different sessions or external data sets
 
 ## Browser Compatibility
 
